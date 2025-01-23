@@ -1,19 +1,35 @@
-var io = require("socket.io-client");
-var socket = io.connect("http://localhost:3000", { reconnect: true });
+const io = require("socket.io-client");
+const readline = require("readline");
 
-// Add a connect listener
-socket.on("connect", function (socket) {
-  console.log(`Connected!`);
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
 });
 
-socket.on("message", (message) => {
-  console.log(`Server: ${message}`);
-});
+rl.question("Enter your name: ", (name) => {
+  const socket = io.connect("http://localhost:3000", { reconnect: true });
 
-process.stdin.on("data", (buf) => {
-  if (String(buf) == "quit\n") {
-    console.log(`${socket.id} disconnecting..`);
-    socket.disconnect();
-  }
-  socket.emit("message", String(buf));
+  socket.on("connect", () => {
+    console.log(`Connected to the server as ${name}`);
+    socket.emit("join", name);
+  });
+
+  socket.on("message", (message) => {
+    console.log(`Server: ${message}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`Disconnected from the server`);
+    process.exit();
+  });
+
+  rl.on("line", (input) => {
+    if (input.trim() === "quit") {
+      console.log("Disconnecting...");
+      socket.disconnect();
+      rl.close();
+      process.exit();
+    }
+    socket.emit("message", input);
+  });
 });
